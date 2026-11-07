@@ -6,6 +6,7 @@ import {
   getTracksByGenre,
   getMoreTracksFromArtist
 } from '../services/youtubeMusicService.js';
+import { fetchLyrics } from '../services/lyricsService.js';
 import { supabaseAdmin } from '../config/supabase.js';
 
 /**
@@ -212,5 +213,30 @@ export async function getHomeRecommendations(req, res) {
   } catch (error) {
     console.error('Error en getHomeRecommendations:', error);
     res.status(500).json({ error: 'Error al generar recomendaciones de inicio.' });
+  }
+}
+
+/**
+ * Obtener letras sincronizadas o estándar de la canción
+ */
+export async function getLyrics(req, res) {
+  try {
+    const { track, artist } = req.query;
+    if (!track) {
+      return res.status(400).json({ error: 'El nombre de la canción es requerido.' });
+    }
+
+    const lyricsData = await fetchLyrics(track, artist || '');
+    if (!lyricsData) {
+      return res.json({ found: false, message: 'Letra no disponible para esta canción.' });
+    }
+
+    res.json({
+      found: true,
+      ...lyricsData
+    });
+  } catch (error) {
+    console.error('Error en getLyrics:', error.message);
+    res.status(500).json({ error: 'Error al consultar letras.' });
   }
 }

@@ -5,7 +5,8 @@ import {
   getStreamUrl,
   getTrending,
   getGenre,
-  getHomeRecommendations
+  getHomeRecommendations,
+  getLyrics
 } from '../controllers/musicController.js';
 import { authenticateUser } from '../middleware/auth.js';
 
@@ -24,6 +25,9 @@ router.get('/search', searchTracks);
 // Descubrir
 router.get('/trending', getTrending);
 router.get('/genre/:genre', getGenre);
+
+// Letras de canciones
+router.get('/lyrics', getLyrics);
 
 // Recomendaciones de Inicio (SOLO de artistas escuchados por el usuario)
 router.get('/recommendations', getHomeRecommendations);
