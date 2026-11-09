@@ -43,7 +43,11 @@ export async function streamAudio(req, res) {
 
     const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
     const info = await ytdl.getInfo(videoUrl);
-    const format = chooseFormat(info.formats, { quality: 'highestaudio' });
+    
+    // Priorizar audio nativo MP4/AAC (itag 140) para máxima compatibilidad con ExoPlayer en Android
+    const audioFormats = info.formats.filter(f => f.hasAudio && !f.hasVideo);
+    const format = audioFormats.find(f => f.container === 'mp4' || f.mimeType?.includes('mp4a')) ||
+                   chooseFormat(info.formats, { quality: 'highestaudio' });
 
     if (!format) {
       return res.status(404).json({ error: 'Formato de audio no disponible.' });
@@ -52,7 +56,7 @@ export async function streamAudio(req, res) {
     const rangeHeader = req.headers.range;
     let rangeOption = {};
 
-    res.setHeader('Content-Type', format.mimeType || 'audio/webm');
+    res.setHeader('Content-Type', format.mimeType || 'audio/mp4');
     res.setHeader('Accept-Ranges', 'bytes');
 
     if (download === 'true') {
