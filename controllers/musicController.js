@@ -89,7 +89,7 @@ export async function streamAudio(req, res) {
     stream.on('error', (err) => {
       console.warn('Stream error:', err.message);
       if (!res.headersSent) {
-        res.status(500).json({ error: 'Error durante la transmisión de audio.' });
+        res.status(500).json({ error: 'Error durante la transmisión de audio.', detail: err.message });
       }
     });
 
@@ -97,7 +97,11 @@ export async function streamAudio(req, res) {
   } catch (error) {
     console.error('Error en streamAudio:', error.message);
     if (!res.headersSent) {
-      res.status(500).json({ error: 'No se pudo reproducir el audio de esta canción.' });
+      res.status(500).json({
+        error: 'No se pudo reproducir el audio de esta canción.',
+        detail: error.message,
+        stack: error.stack
+      });
     }
   }
 }
