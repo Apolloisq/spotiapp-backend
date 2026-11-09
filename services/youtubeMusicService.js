@@ -1,7 +1,10 @@
 import axios from 'axios';
-import { Ytdl, chooseFormat } from '@distube/ytdl-core';
+import { Ytdl, chooseFormat, Client, Quality } from '@distube/ytdl-core';
 
-const ytdl = new Ytdl();
+// Clientes optimizados para servidores cloud (WebEmbedded, VisionOS y Tv no sufren bloqueos de PO-token ni cuelgues)
+export const ytdl = new Ytdl({
+  clients: [Client.WebEmbedded, Client.VisionOS, Client.Tv]
+});
 const INNERTUBE_API_KEY = 'AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30';
 const INNERTUBE_CLIENT_VERSION = '1.20240424.01.00';
 

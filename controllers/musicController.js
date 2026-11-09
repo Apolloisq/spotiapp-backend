@@ -1,5 +1,7 @@
 import axios from 'axios';
+import { Quality, chooseFormat } from '@distube/ytdl-core';
 import {
+  ytdl,
   searchYouTubeMusic,
   getDirectAudioStream,
   getTrendingHits,
@@ -33,54 +35,66 @@ export async function searchTracks(req, res) {
 export async function streamAudio(req, res) {
   try {
     const { videoId } = req.params;
-    const { download } = req.query; // Si download=true, fuerza cabecera de descarga
+    const { download } = req.query;
 
     if (!videoId) {
       return res.status(400).json({ error: 'ID de canción requerido.' });
     }
 
-    const streamData = await getDirectAudioStream(videoId);
+    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+    const info = await ytdl.getInfo(videoUrl);
+    const format = chooseFormat(info.formats, { quality: 'highestaudio' });
 
-    // Si el cliente pide redirección directa para optimizar latencia:
-    if (req.query.redirect === 'true') {
-      return res.redirect(streamData.url);
+    if (!format) {
+      return res.status(404).json({ error: 'Formato de audio no disponible.' });
     }
 
-    // Proxy streaming con soporte de Range headers para reproductores móviles
-    const range = req.headers.range;
-    const streamHeaders = {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-    };
+    const rangeHeader = req.headers.range;
+    let rangeOption = {};
 
-    if (range) {
-      streamHeaders['Range'] = range;
-    }
-
-    const audioResponse = await axios.get(streamData.url, {
-      headers: streamHeaders,
-      responseType: 'stream',
-      validateStatus: (status) => status >= 200 && status < 300
-    });
-
-    res.status(audioResponse.status);
-    res.setHeader('Content-Type', streamData.mimeType || 'audio/webm');
+    res.setHeader('Content-Type', format.mimeType || 'audio/webm');
     res.setHeader('Accept-Ranges', 'bytes');
 
-    if (audioResponse.headers['content-range']) {
-      res.setHeader('Content-Range', audioResponse.headers['content-range']);
-    }
-    if (audioResponse.headers['content-length']) {
-      res.setHeader('Content-Length', audioResponse.headers['content-length']);
-    }
-
     if (download === 'true') {
-      res.setHeader('Content-Disposition', `attachment; filename="${videoId}.m4a"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${videoId}.mp3"`);
     }
 
-    audioResponse.data.pipe(res);
+    if (rangeHeader && format.contentLength) {
+      const parts = rangeHeader.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const total = parseInt(format.contentLength, 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+
+      res.status(206);
+      res.setHeader('Content-Range', `bytes ${start}-${end}/${total}`);
+      res.setHeader('Content-Length', (end - start) + 1);
+
+      rangeOption = { range: { start, end } };
+    } else {
+      if (format.contentLength) {
+        res.setHeader('Content-Length', format.contentLength);
+      }
+    }
+
+    const stream = ytdl.download(info, {
+      quality: Quality.HighestAudio,
+      filter: { hasAudio: true, hasVideo: false },
+      ...rangeOption
+    });
+
+    stream.on('error', (err) => {
+      console.warn('Stream error:', err.message);
+      if (!res.headersSent) {
+        res.status(500).json({ error: 'Error durante la transmisión de audio.' });
+      }
+    });
+
+    stream.pipe(res);
   } catch (error) {
     console.error('Error en streamAudio:', error.message);
-    res.status(500).json({ error: 'No se pudo reproducir el audio de esta canción.' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'No se pudo reproducir el audio de esta canción.' });
+    }
   }
 }
 
