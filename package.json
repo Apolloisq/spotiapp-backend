@@ -1,6 +1,6 @@
 {
   "name": "spotiapp-backend",
-  "version": "1.0.0",
+  "version": "1.0.4",
   "description": "Backend API para SpotiApp - Validación de licencias, control de dispositivos, YouTube Music y Supabase",
   "main": "server.js",
   "type": "module",
