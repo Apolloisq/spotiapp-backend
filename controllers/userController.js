@@ -108,3 +108,24 @@ export async function recordPlay(req, res) {
     res.status(500).json({ error: 'Error al registrar reproducción.' });
   }
 }
+
+/**
+ * Obtener canciones escuchadas recientemente por el usuario
+ */
+export async function getRecentPlays(req, res) {
+  try {
+    const userId = req.user.id;
+    const { data: plays, error } = await supabaseAdmin
+      .from('plays')
+      .select('*')
+      .eq('user_id', userId)
+      .order('fecha', { ascending: false })
+      .limit(10);
+
+    if (error) throw error;
+    res.json({ plays: plays || [] });
+  } catch (error) {
+    console.error('Error en getRecentPlays:', error);
+    res.status(500).json({ error: 'Error al obtener canciones recientes.' });
+  }
+}
