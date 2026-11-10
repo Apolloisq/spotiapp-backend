@@ -60,21 +60,30 @@ export async function activateKey(req, res) {
 
     const now = new Date();
 
-    // 3. Si la clave ya está 'activa' (Inicio de sesión de usuario existente)
+    // 3. Si la clave ya está 'activa' (Inicio de sesión de usuario existente o activación de dispositivo adicional)
     if (keyRecord.estado === 'activa') {
-      // Validar si está vinculada a otro dispositivo
-      if (keyRecord.device_id && keyRecord.device_id !== deviceId) {
-        return res.status(403).json({
-          error: 'DISPOSITIVO_VINCULADO',
-          message: 'Este código ya está activo en otro teléfono. Pide desvincularlo al administrador en soporte.'
-        });
-      }
+      const maxDevices = keyRecord.max_dispositivos || (keyRecord.clave.includes('SPOTI-TEST-30D') ? 8 : 1);
+      const linkedDevices = (keyRecord.device_id || '')
+        .split(',')
+        .map(d => d.trim())
+        .filter(Boolean);
 
-      // Si fue desvinculada por el administrador, re-vincular al nuevo dispositivo
-      if (!keyRecord.device_id) {
+      const isAlreadyLinked = linkedDevices.includes(deviceId);
+
+      // Si no está vinculado aún este dispositivo
+      if (!isAlreadyLinked) {
+        if (linkedDevices.length >= maxDevices) {
+          return res.status(403).json({
+            error: 'DISPOSITIVO_VINCULADO',
+            message: `Este código ya ha alcanzado el límite de ${maxDevices} dispositivos permitidos (${linkedDevices.length}/${maxDevices} en uso). Pide desvincularlo al administrador en soporte.`
+          });
+        }
+
+        // Vincular el nuevo dispositivo a la lista de dispositivos autorizados
+        linkedDevices.push(deviceId);
         await supabaseAdmin
           .from('keys')
-          .update({ device_id: deviceId })
+          .update({ device_id: linkedDevices.join(',') })
           .eq('id', keyRecord.id);
       }
 

@@ -55,8 +55,13 @@ export async function authenticateUser(req, res, next) {
       });
     }
 
-    // 1. Validar vinculación estricta de dispositivo
-    if (keyRecord.device_id && keyRecord.device_id !== deviceId) {
+    // 1. Validar vinculación estricta de dispositivo (soporta claves multi-dispositivo)
+    const linkedDevices = (keyRecord.device_id || '')
+      .split(',')
+      .map(d => d.trim())
+      .filter(Boolean);
+
+    if (linkedDevices.length > 0 && !linkedDevices.includes(deviceId)) {
       return res.status(403).json({
         error: 'DISPOSITIVO_NO_COINCIDE',
         message: 'Esta clave está vinculada a otro dispositivo móvil.'
