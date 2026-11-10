@@ -1,9 +1,9 @@
 import axios from 'axios';
 import { Ytdl, chooseFormat, Client, Quality } from '@distube/ytdl-core';
 
-// Cliente optimizado para servidores cloud (Tv resuelve en <2s sin cuelgues de PO-token)
+// Clientes optimizados para servidores cloud con fallback automático
 export const ytdl = new Ytdl({
-  clients: [Client.Tv]
+  clients: [Client.Tv, Client.WebEmbedded, Client.VisionOS, Client.Mweb]
 });
 const INNERTUBE_API_KEY = 'AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30';
 const INNERTUBE_CLIENT_VERSION = '1.20240424.01.00';

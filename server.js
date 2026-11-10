@@ -7,6 +7,7 @@ import adminRoutes from './routes/adminRoutes.js';
 import musicRoutes from './routes/musicRoutes.js';
 import userRoutes from './routes/userRoutes.js';
 import playlistRoutes from './routes/playlistRoutes.js';
+import { ytdl } from './services/youtubeMusicService.js';
 
 dotenv.config();
 
@@ -64,4 +65,12 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🎧 SpotiApp Backend corriendo en: http://localhost:${PORT}`);
   console.log(`📡 Health check: http://localhost:${PORT}/health`);
   console.log('====================================================');
+
+  // Pre-calentar el solver de YouTube en segundo plano
+  setTimeout(() => {
+    console.log('🔄 Pre-calentando solver de YouTube en segundo plano...');
+    ytdl.getInfo('https://www.youtube.com/watch?v=dQw4w9WgXcQ')
+      .then(() => console.log('✅ YouTube Player Solver pre-calentado y listo en caché.'))
+      .catch(err => console.warn('Aviso pre-calentando solver:', err.message));
+  }, 1000);
 });
