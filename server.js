@@ -39,7 +39,7 @@ app.use('/api/user', userRoutes);
 app.use('/api/playlists', playlistRoutes);
 
 // Health check
-app.get('/health', (req, res) => {
+app.get(['/health', '/api/health'], (req, res) => {
   res.json({
     status: 'ONLINE',
     service: 'SpotiApp Music & Licensing Backend',
