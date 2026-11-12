@@ -3,7 +3,7 @@ import { Ytdl, chooseFormat, Client, Quality } from '@distube/ytdl-core';
 
 // Clientes optimizados para servidores cloud con fallback automático
 export const ytdl = new Ytdl({
-  clients: [Client.Tv, Client.WebEmbedded, Client.Mweb]
+  clients: [Client.VisionOS, Client.Tv, Client.WebEmbedded, Client.Mweb]
 });
 const INNERTUBE_API_KEY = 'AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30';
 const INNERTUBE_CLIENT_VERSION = '1.20240424.01.00';

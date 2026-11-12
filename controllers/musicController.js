@@ -29,6 +29,27 @@ export async function searchTracks(req, res) {
   }
 }
 
+// Caché en memoria para agilizar peticiones Range de ExoPlayer (0ms en chunks repetidos)
+const infoCache = new Map();
+const INFO_CACHE_TTL_MS = 2 * 60 * 60 * 1000; // 2 horas
+
+async function getCachedInfo(videoId) {
+  const cached = infoCache.get(videoId);
+  if (cached && (Date.now() - cached.timestamp < INFO_CACHE_TTL_MS)) {
+    return cached.info;
+  }
+  const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
+  const info = await ytdl.getInfo(videoUrl);
+  infoCache.set(videoId, { info, timestamp: Date.now() });
+
+  // Limitar tamaño de caché a 250 canciones para no agotar RAM en hosting gratuito
+  if (infoCache.size > 250) {
+    const oldestKey = infoCache.keys().next().value;
+    infoCache.delete(oldestKey);
+  }
+  return info;
+}
+
 /**
  * Endpoint de streaming y descarga de audio directo (soporta Range requests y descarga offline)
  */
@@ -41,12 +62,11 @@ export async function streamAudio(req, res) {
       return res.status(400).json({ error: 'ID de canción requerido.' });
     }
 
-    const videoUrl = `https://www.youtube.com/watch?v=${videoId}`;
-    const info = await ytdl.getInfo(videoUrl);
+    const info = await getCachedInfo(videoId);
     
     // Priorizar audio nativo MP4/AAC (itag 140) para máxima compatibilidad con ExoPlayer en Android
     const audioFormats = info.formats.filter(f => f.hasAudio && !f.hasVideo);
-    const format = audioFormats.find(f => f.container === 'mp4' || f.mimeType?.includes('mp4a')) ||
+    const format = audioFormats.find(f => f.container === 'mp4' || f.mimeType?.includes('mp4a') || f.itag === 140) ||
                    chooseFormat(info.formats, { quality: 'highestaudio' });
 
     if (!format) {
@@ -81,9 +101,14 @@ export async function streamAudio(req, res) {
     }
 
     const stream = ytdl.download(info, {
-      quality: Quality.HighestAudio,
-      filter: { hasAudio: true, hasVideo: false },
+      format,
       ...rangeOption
+    });
+
+    res.on('close', () => {
+      try {
+        stream.destroy();
+      } catch (e) {}
     });
 
     stream.on('error', (err) => {
